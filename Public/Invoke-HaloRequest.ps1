@@ -43,11 +43,13 @@ function Invoke-HaloRequest {
     } else {
         $RequestHeaders = $null
     }
+    Write-Debug "Current connection information: $($Script:HAPIConnectionInformation | Out-String -Width 10000)"
     $Retries = 0
     do {
         $Retries++
         $Results = try {
             Write-Verbose "Making a $($WebRequestParams.Method) request to $($WebRequestParams.Uri)"
+            Write-Debug "Request headers: $($RequestHeaders | Out-String -Width 10000)"
             $Response = Invoke-WebRequest @WebRequestParams -Headers $RequestHeaders -ContentType 'application/json; charset=utf-8'
             Write-Debug "Response headers: $($Response.Headers | Out-String)"
             Write-Debug "Raw Response: $Response"

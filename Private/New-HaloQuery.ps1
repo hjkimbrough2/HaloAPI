@@ -23,7 +23,9 @@ function New-HaloQuery {
             Write-Debug "Excluding system parameter $($Parameter.Name)."
             Continue
         }
+        Remove-Variable -Name Value -ErrorAction SilentlyContinue # Remove 'Value' variable if it exists to prevent issues on the next iteration
         $ParameterVariable = Get-Variable -Name $Parameter.Name -ErrorAction SilentlyContinue
+        Write-Debug "Looking at variable name '$($Parameter.Name)' of type '$($Parameter.ParameterType.Name)'" # Debug to show us the parameter name and type
         if (($Parameter.ParameterType.Name -eq 'String') -or ($Parameter.ParameterType.Name -eq 'String[]')) {
             Write-Debug "Found String or String Array param $($ParameterVariable.Name)"
             if ([String]::IsNullOrEmpty($ParameterVariable.Value)) {
@@ -44,11 +46,13 @@ function New-HaloQuery {
                     $QSCollection.Add($Query, $QueryValue)
                     Write-Debug "Adding parameter $($Query) with value $($QueryValue)"
                 } elseif (($Value -is [array]) -and (-not $CommaSeparatedArrays)) {
+                    Write-Debug "Building non-comma separated array for this parameter"
                     foreach ($ArrayValue in $Value) {
                         $QSCollection.Add($Query, $ArrayValue)
                         Write-Debug "Adding parameter $($Query) with value $($ArrayValue)"
                     }
                 } else {
+                    Write-Debug "Adding this parameter directly"
                     $QSCollection.Add($Query, $Value)
                     Write-Debug "Adding parameter $($Query) with value $($Value)"
                 }
@@ -92,16 +96,63 @@ function New-HaloQuery {
                     $QSCollection.Add($Query, $QueryValue)
                     Write-Debug "Adding parameter $($Query) with value $($QueryValue)"
                 } elseif (($Value -is [array]) -and (-not $CommaSeparatedArrays)) {
+                    Write-Debug "Building non-comma separated array for this parameter"
                     foreach ($ArrayValue in $Value) {
                         $QSCollection.Add($Query, $ArrayValue)
                         Write-Debug "Adding parameter $($Query) with value $($ArrayValue)"
                     }
                 } else {
+                    Write-Debug "Adding this parameter directly"
                     $QSCollection.Add($Query, $Value)
                     Write-Debug "Adding parameter $($Query) with value $($Value)"
                 }
             }
         }
+        if (($Parameter.ParameterType.Name -eq 'DateTime') -or ($Parameter.ParameterType.Name -eq 'DateTime[]')) {
+                Write-Debug "Found DateTime or DateTime Array param $($ParameterVariable.Name)"
+                if ($ParameterVariable.Value -eq [DateTime]::MinValue) {
+                    Write-Debug "Skipping unset param $($ParameterVariable.Name)"
+                    Continue
+                } else {
+                    if ($Parameter.Aliases) {
+                        # Use the first alias as the query.
+                        $Query = ([String]$Parameter.Aliases[0]).ToLower()
+                    } else {
+                        # If no aliases then use the name in lowercase.
+                        $Query = ([String]$ParameterVariable.Name).ToLower()
+                    }
+                    [datetime]$Value = $ParameterVariable.Value
+
+                    # Convert value - private function
+                    function Convert-DateTimeValueToHaloString ( [datetime] $Value ) {
+                        $ValueUTC = $Value.ToUniversalTime() # Convert to UTC
+                        $DateTimeValueFormatted = Get-Date ($ValueUTC) -format "yyyy-MM-ddTHH:mm:ss.ffffZ"
+
+                        return $DateTimeValueFormatted
+                    } #/Convert-DateTimeValueToHaloString
+
+                    if (($Value -is [array]) -and ($CommaSeparatedArrays)) {
+                        Write-Debug 'Building comma separated array string.'
+                        $QueryValueArr = foreach ( $ValueDT in $Value ) { Convert-DateTimeValueToHaloString -Value $ValueDT }
+                        $QueryValue = $QueryValueArr -join ','
+                        $QSCollection.Add($Query, $QueryValue)
+                        Write-Debug "Adding parameter $($Query) with value $($QueryValue)"
+                    } elseif (($Value -is [array]) -and (-not $CommaSeparatedArrays)) {
+                        Write-Debug "Building non-comma separated array for this parameter"
+                        foreach ($ArrayValue in $Value) {
+                            $ArrayValueDT = Convert-DateTimeValueToHaloString -Value $ArrayValue
+                            $QSCollection.Add($Query, $ArrayValueDT)
+                            Write-Debug "Adding parameter $($Query) with value $($ArrayValueDT)"
+                        }
+                    } else {
+                        Write-Debug "Adding this parameter directly"
+                        $ValueDT = Convert-DateTimeValueToHaloString -Value $Value
+                        $QSCollection.Add($Query, $ValueDT)
+                        Write-Debug "Adding parameter $($Query) with value $($ValueDT)"
+                    }#/if $Value is array or not
+                } #/if we have a valid value
+                
+            } #/if $Parameter.ParameterType.Name -eq 'DateTime'
     }
     if ('count' -in $QSCollection.Keys) {
         Write-Verbose "Halo recommend use of pagination with the '-Paginate' parameter instead of '-Count'."

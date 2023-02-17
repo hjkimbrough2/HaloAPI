@@ -292,7 +292,7 @@ function Get-HaloTicket {
             }
         } else {
             Write-Verbose 'Running in multi-ticket mode.'
-            $QSCollection = New-HaloQuery -CommandName $CommandName -Parameters $Parameters -IsMulti
+            $QSCollection = New-HaloQuery -CommandName $CommandName -Parameters $Parameters -CommaSeparatedArrays -IsMulti
             $Resource = 'api/tickets'
             $RequestParams = @{
                 Method = 'GET'

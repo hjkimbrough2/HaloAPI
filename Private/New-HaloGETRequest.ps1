@@ -63,6 +63,7 @@ function New-HaloGETRequest {
                 Uri    = "$($Script:HAPIConnectionInformation.URL)$($Resource)$($Query)"
             }
             Write-Debug "Building new HaloRequest with params: $($WebRequestParams | Out-String)"
+            Write-Debug "HaloRequest Full URI is: $($WebRequestParams.Uri)"
             $Response = Invoke-HaloRequest -WebRequestParams $WebRequestParams -RawResult:$RawResult
             Write-Debug "Halo request returned $($Response | Out-String)"
             if ((-not [string]::IsNullOrWhiteSpace($ResourceType)) -and ($Response.PSObject.Properties.name -match $ResourceType) -and ($Response.$ResourceType -is [Object])) {

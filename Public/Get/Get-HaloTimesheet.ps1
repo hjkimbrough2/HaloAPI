@@ -20,7 +20,12 @@ function Get-HaloTimesheet {
         [switch]$ShowHolidays,
         # Return the timesheet for the selected agents.
         [Parameter( ParameterSetName = 'Multi' )]
-        [int32[]]$SelectedAgents,
+        [Alias('agent_id')]
+        [int32]$AgentID,
+        # Filter by the specified array of agent IDs.
+        [Parameter( ParameterSetName = 'Multi' )]
+        [Alias('agents')]
+        [int32[]]$Agent,
         # Return the selected types.
         [Parameter( ParameterSetName = 'Multi' )]
         [int32[]]$SelectedTypes = @(0, 1 , 2, 3),
